@@ -1,0 +1,16 @@
+$/* 
+$ * @brief Enduro/X internal UBF field table
+$ *
+$ * @file extest.h
+$ */
+
+$#ifndef __EXTEST_H
+$#define __EXTEST_H
+
+*base 10000
+
+#NAME		ID	TYPE	FLAG	COMMENT
+#----		--	----	----	-------
+
+$#endif
+
