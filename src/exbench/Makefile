@@ -2,7 +2,7 @@
 SOURCEDIR=.
 SOURCES := $(shell find $(SOURCEDIR) -name '*.go')
 
-LIBRARY=exutil
+LIBRARY=exbench
 LDFLAGS=
 
 VERSION=1.0.0
