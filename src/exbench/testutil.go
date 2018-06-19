@@ -43,3 +43,24 @@ const (
 func ndrx_bench_write_stats(msgsize float64, callspersec float64) int {
         return int(C.ndrx_bench_write_stats(C.double(msgsize), C.double(callspersec)))
 }
+
+
+func ndrx_bench_get_buffer_1st(size int) []byte {
+        return nil
+
+}
+
+func ndrx_bench_verify_buffer_1st(size int) bool {
+        return false
+
+}
+
+func ndrx_bench_transform_buffer_1st_to_2dn(buf []byte) []byte{
+        return nil
+
+}
+
+func ndrx_bench_verify_buffer_2nd(buf1 []byte, buf2 []byte) bool {
+        return false
+}
+
