@@ -17,7 +17,12 @@ package exbench
 
 
 */
-import "C"
+import (
+	"C"
+
+	atmi "github.com/endurox-dev/endurox-go"
+)
+
 /*
 import "unsafe"
 import "fmt"
@@ -28,10 +33,10 @@ import "runtime"
  * SUCCEED/FAIL flags
  */
 const (
-        /** succeed status */
+	/** succeed status */
 	SUCCEED = 0
-        /** fail status */
-	FAIL    = -1
+	/** fail status */
+	FAIL = -1
 )
 
 /**
@@ -40,27 +45,61 @@ const (
  * @param[in] callspersec number of calls per second
  * @return 0 - succeed; -1 - fail
  */
-func ndrx_bench_write_stats(msgsize float64, callspersec float64) int {
-        return int(C.ndrx_bench_write_stats(C.double(msgsize), C.double(callspersec)))
+func Ndrx_bench_write_stats(msgsize float64, callspersec float64) int {
+	return int(C.ndrx_bench_write_stats(C.double(msgsize), C.double(callspersec)))
 }
 
+/**
+ * First buffer prepare for given size
+ * @param size[in] array size for testing
+ * @param mod[in] modulus for the counter, for different tests
+ * @return allocated test buffer
+ */
+func Ndrx_bench_get_buffer(size int, mod int) []byte {
 
-func ndrx_bench_get_buffer_1st(size int) []byte {
-        return nil
+	ret := make([]byte, size)
 
+	for i := 0; i < size; i++ {
+		ret[i] = byte(255 - i%mod)
+	}
+
+	return ret
 }
 
-func ndrx_bench_verify_buffer_1st(size int) bool {
-        return false
+/**
+ * Verify the first buffer for the given size
+ * @param buf[in] buffer to test
+ * @param size[in] buffer size (from different source to check the actual len)
+ * @param mod[in] value modulus (for different tests)
+ * @return -1 all OK, or >=0, position at which value is invalid + (expected, got)
+ */
+func Ndrx_bench_verify_buffer(buf []byte, size int, mod int) (int, byte, byte) {
 
+	for i := 0; i < size; i++ {
+		expected := byte(255 - i%mod)
+
+		if expected != buf[i] {
+			return i, byte(expected), buf[i]
+		}
+	}
+	return -1, 0, 0
 }
 
-func ndrx_bench_transform_buffer_1st_to_2dn(buf []byte) []byte{
-        return nil
+/**
+ * request callback function
+ * @param ctx[in] ATMI context (for logging, etc...)
+ * @param buf[in] Byte buffer to send
+ * @param correl[in] Call correlator (used by systems where needed to match req with rsp)
+ * @return status code 0 = succeed, -1 = FAIL, return buffer.
+ */
+type Ndrx_Bench_requestCB func(ctx atmi.ATMICtx, long correl, buf []byte) (int, buf []byte)
+
+/**
+ * Benchmark main
+ * @param request[in] callback function for sending the data to server and
+ *   receiving response back
+ * @return 0 = succeed, -1 fail
+ */
+func Ndrx_bench_main(Ndrx_Bench_requestCB request) int {
 
 }
-
-func ndrx_bench_verify_buffer_2nd(buf1 []byte, buf2 []byte) bool {
-        return false
-}
-
