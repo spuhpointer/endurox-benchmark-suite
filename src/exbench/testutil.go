@@ -17,11 +17,9 @@ package exbench
 
 
 */
-import (
-	"C"
+import "C"
 
-	atmi "github.com/endurox-dev/endurox-go"
-)
+import atmi "github.com/endurox-dev/endurox-go"
 
 /*
 import "unsafe"
@@ -92,14 +90,65 @@ func Ndrx_bench_verify_buffer(buf []byte, size int, mod int) (int, byte, byte) {
  * @param correl[in] Call correlator (used by systems where needed to match req with rsp)
  * @return status code 0 = succeed, -1 = FAIL, return buffer.
  */
-type Ndrx_Bench_requestCB func(ctx atmi.ATMICtx, long correl, buf []byte) (int, buf []byte)
+type Ndrx_Bench_requestCB func(ctx atmi.ATMICtx, correl int64, buf []byte) (int, []byte)
 
 /**
  * Benchmark main
+ * @param threadid[in] logical thread id used for correlators...
  * @param request[in] callback function for sending the data to server and
  *   receiving response back
  * @return 0 = succeed, -1 fail
  */
-func Ndrx_bench_main(Ndrx_Bench_requestCB request) int {
+func Ndrx_bench_main(threadid int, nrrequests int, request Ndrx_Bench_requestCB) int {
 
+	ctx, err := atmi.NewATMICtx()
+
+	if nil != err {
+		fmt.Errorf("Failed to allocate cotnext!", err)
+		return FAIL
+	}
+
+	size := 0
+
+	/* Correlator shall be built as thread id + call number (we need some offset
+	 * for negative steps)
+	 */
+	for i := -1; i < 56; i++ {
+
+		if i <= 0 {
+			size = 1
+		} else {
+			size = i * 1024
+		}
+
+		ctx.TpLogInfo("Benchmarking step: %d with size of %d bytes (nr req: %d)",
+			i, size, nrrequests)
+
+		/* we shall loop over the given count, let say nrrequests / 100K requests
+		 * and shall start the stopwatch
+		 */
+
+		for req := 0; req < nrrequests; req++ {
+
+			buf := Ndrx_bench_get_buffer(size, 255)
+
+			/* build up correlator... */
+			var correl int64
+
+			correl = threadid
+
+			correl <<= 8
+
+			correl |= i
+
+			correl <<= 40
+
+			correl |= req
+
+			res, retbuf := request(ctx, correl, buf)
+		}
+
+	}
+
+	return SUCCEED
 }
