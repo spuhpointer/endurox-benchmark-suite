@@ -20,16 +20,10 @@ package exbench
 import "C"
 
 import (
-	"fmt"
+	"flag"
 
 	atmi "github.com/endurox-dev/endurox-go"
 )
-
-/*
-import "unsafe"
-
-import "runtime"
-*/
 
 /**
  * SUCCEED/FAIL flags
@@ -80,16 +74,47 @@ func Ndrx_bench_get_buffer(size int, mod int) []byte {
  */
 func Ndrx_bench_verify_buffer(ctx *atmi.ATMICtx, buf []byte, size int, mod int, msg string) int {
 
+	if size <= 0 {
+		ctx.TpLogError("TESTERROR! Invalid buffer size received: %d", size)
+		return FAIL
+	}
+
 	for i := 0; i < size; i++ {
 		expected := byte(255 - i%mod)
 
 		if expected != buf[i] {
 			ctx.TpLogError("%s at position %d modulus %d expected: %d got %d",
 				msg, i, mod, expected, buf[i])
+
+			ctx.TpLogDump(atmi.LOG_ERROR, "Invalid buffer", buf, len(buf))
 			return FAIL
 		}
 	}
+
 	return SUCCEED
+}
+
+/**
+ * We have received message from client (at server side)
+ * @param ctx ATMI Context (for logging)
+ * @param correl Call Correlator
+ * @param buf buffer received
+ * @return status code 0 ok, -1 fail
+ * @return byte array to send away if OK
+ */
+func Ndrx_bench_svmain(ctx *atmi.ATMICtx, correl int64, buf []byte) (int, []byte) {
+
+	/* we got buffer, lets very it... */
+
+	if ret := Ndrx_bench_verify_buffer(ctx, buf, len(buf), 255, "TESTERROR! Invalid data from client!"); ret != SUCCEED {
+		ctx.TpLogError("TESTERROR! Invalid data from client, received by server")
+		return FAIL, nil
+	}
+
+	/* generate reply buffer */
+	retbuf := Ndrx_bench_get_buffer(len(buf), 254)
+
+	return SUCCEED, retbuf
 }
 
 /**
@@ -108,28 +133,28 @@ type Ndrx_Bench_requestCB func(ctx *atmi.ATMICtx, correl int64, buf []byte) (int
  *   receiving response back
  * @return 0 = succeed, -1 fail
  */
-func Ndrx_bench_main(threadid int, nrrequests int, request Ndrx_Bench_requestCB) int {
+func Ndrx_bench_clmain(ctx *atmi.ATMICtx, threadid int, request Ndrx_Bench_requestCB) int {
 
-	ctx, err := atmi.NewATMICtx()
-
-	if nil != err {
-		fmt.Errorf("Failed to allocate cotnext!", err)
-		return FAIL
-	}
+	nrrequestsPtr := flag.Int("num", 500000, "Number of requests")
+	flag.Parse()
 
 	size := 0
+
+	nrrequests := *nrrequestsPtr
+
+	ctx.TpLogInfo("Number of request per message size: %d", nrrequests)
 
 	/* Correlator shall be built as thread id + call number (we need some offset
 	 * for negative steps)
 
 	 */
-	for i := -1 * WARMUP; i < 56; i++ {
+	for i := -1 * WARMUP; i < 128; i++ {
 
 		/* have some time for warmup */
 		if i <= 0 {
 			size = 1
 		} else {
-			size = i * 1024
+			size = i * 32
 		}
 
 		ctx.TpLogInfo("Benchmarking step: %d with size of %d bytes (nr req: %d)",
@@ -141,8 +166,9 @@ func Ndrx_bench_main(threadid int, nrrequests int, request Ndrx_Bench_requestCB)
 		var w StopWatch
 
 		w.Reset()
+		requests_to_do := nrrequests / (WARMUP + i + 1)
 
-		for req := 0; req < nrrequests; req++ {
+		for req := 0; req < requests_to_do; req++ {
 
 			buf := Ndrx_bench_get_buffer(size, 255)
 
@@ -175,8 +201,8 @@ func Ndrx_bench_main(threadid int, nrrequests int, request Ndrx_Bench_requestCB)
 		}
 
 		/* ready to plot the results... */
-		if i+WARMUP >= 0 {
-			if ret := Ndrx_bench_write_stats(float64(size), float64(nrrequests)/float64(w.GetDetlaSec())); SUCCEED != ret {
+		if i >= 0 {
+			if ret := Ndrx_bench_write_stats(float64(size), float64(requests_to_do)/float64(w.GetDetlaSec())); SUCCEED != ret {
 				ctx.TpLogError("Failed to write benchmark stats!")
 				return FAIL
 			}

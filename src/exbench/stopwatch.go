@@ -11,17 +11,17 @@ import (
 
 //Get UTC milliseconds since epoch
 //@return epoch milliseconds
-func GetEpochMillis() int64 {
+func GetEpochMillis() float64 {
 	now := time.Now()
 	nanos := now.UnixNano()
-	millis := nanos / 1000000
+	millis := float64(float64(nanos) / float64(1000000))
 
 	return millis
 }
 
 //About incoming & outgoing messages:
 type StopWatch struct {
-	start int64 //Timestamp messag sent
+	start float64 //Timestamp messag sent
 }
 
 //Reset the stopwatch
@@ -31,13 +31,12 @@ func (s *StopWatch) Reset() {
 
 //Get delta milliseconds
 //@return time spent in milliseconds
-func (s *StopWatch) GetDeltaMillis() int64 {
+func (s *StopWatch) GetDeltaMillis() float64 {
 	return GetEpochMillis() - s.start
 }
 
 //Get delta seconds of the stopwatch
 //@return return seconds spent
-func (s *StopWatch) GetDetlaSec() int64 {
-	return (GetEpochMillis() - s.start) / 1000
+func (s *StopWatch) GetDetlaSec() float64 {
+	return s.GetDeltaMillis() / float64(1000)
 }
-
