@@ -19,11 +19,15 @@ package exbench
 */
 import "C"
 
-import atmi "github.com/endurox-dev/endurox-go"
+import (
+	"fmt"
+
+	atmi "github.com/endurox-dev/endurox-go"
+)
 
 /*
 import "unsafe"
-import "fmt"
+
 import "runtime"
 */
 
@@ -35,6 +39,9 @@ const (
 	SUCCEED = 0
 	/** fail status */
 	FAIL = -1
+
+	/** number of messages to war up the system */
+	WARMUP = 2
 )
 
 /**
@@ -69,18 +76,20 @@ func Ndrx_bench_get_buffer(size int, mod int) []byte {
  * @param buf[in] buffer to test
  * @param size[in] buffer size (from different source to check the actual len)
  * @param mod[in] value modulus (for different tests)
- * @return -1 all OK, or >=0, position at which value is invalid + (expected, got)
+ * @return -1 fail, 0 succeed
  */
-func Ndrx_bench_verify_buffer(buf []byte, size int, mod int) (int, byte, byte) {
+func Ndrx_bench_verify_buffer(ctx *atmi.ATMICtx, buf []byte, size int, mod int, msg string) int {
 
 	for i := 0; i < size; i++ {
 		expected := byte(255 - i%mod)
 
 		if expected != buf[i] {
-			return i, byte(expected), buf[i]
+			ctx.TpLogError("%s at position %d modulus %d expected: %d got %d",
+				msg, i, mod, expected, buf[i])
+			return FAIL
 		}
 	}
-	return -1, 0, 0
+	return SUCCEED
 }
 
 /**
@@ -90,7 +99,7 @@ func Ndrx_bench_verify_buffer(buf []byte, size int, mod int) (int, byte, byte) {
  * @param correl[in] Call correlator (used by systems where needed to match req with rsp)
  * @return status code 0 = succeed, -1 = FAIL, return buffer.
  */
-type Ndrx_Bench_requestCB func(ctx atmi.ATMICtx, correl int64, buf []byte) (int, []byte)
+type Ndrx_Bench_requestCB func(ctx *atmi.ATMICtx, correl int64, buf []byte) (int, []byte)
 
 /**
  * Benchmark main
@@ -112,9 +121,11 @@ func Ndrx_bench_main(threadid int, nrrequests int, request Ndrx_Bench_requestCB)
 
 	/* Correlator shall be built as thread id + call number (we need some offset
 	 * for negative steps)
-	 */
-	for i := -1; i < 56; i++ {
 
+	 */
+	for i := -1 * WARMUP; i < 56; i++ {
+
+		/* have some time for warmup */
 		if i <= 0 {
 			size = 1
 		} else {
@@ -127,6 +138,9 @@ func Ndrx_bench_main(threadid int, nrrequests int, request Ndrx_Bench_requestCB)
 		/* we shall loop over the given count, let say nrrequests / 100K requests
 		 * and shall start the stopwatch
 		 */
+		var w StopWatch
+
+		w.Reset()
 
 		for req := 0; req < nrrequests; req++ {
 
@@ -135,17 +149,37 @@ func Ndrx_bench_main(threadid int, nrrequests int, request Ndrx_Bench_requestCB)
 			/* build up correlator... */
 			var correl int64
 
-			correl = threadid
+			correl = int64(threadid)
 
 			correl <<= 8
 
-			correl |= i
+			correl |= WARMUP + int64(i)
 
 			correl <<= 40
 
-			correl |= req
+			correl |= int64(req)
 
 			res, retbuf := request(ctx, correl, buf)
+
+			if res != SUCCEED {
+				ctx.TpLogError("Server failure on call=%d size=%d iter=%d correl=%d",
+					req, size, i, correl)
+			}
+
+			if ret := Ndrx_bench_verify_buffer(ctx, retbuf, size, 254, "Error in reply"); ret != SUCCEED {
+
+				ctx.TpLogError("Failed to verify reply buffer on call=%d size=%d iter=%d correl=%d",
+					req, size, i, correl)
+				return FAIL
+			}
+		}
+
+		/* ready to plot the results... */
+		if i+WARMUP >= 0 {
+			if ret := Ndrx_bench_write_stats(float64(size), float64(nrrequests)/float64(w.GetDetlaSec())); SUCCEED != ret {
+				ctx.TpLogError("Failed to write benchmark stats!")
+				return FAIL
+			}
 		}
 
 	}
