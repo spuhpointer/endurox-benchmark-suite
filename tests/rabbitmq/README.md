@@ -1,4 +1,6 @@
 
+# RabbitMQ install guide
+
 Based on https://www.vultr.com/docs/how-to-install-rabbitmq-on-ubuntu-16-04-47
 
 How To Install RabbitMQ on Ubuntu 16.04
@@ -9,7 +11,7 @@ RabbitMQ is a widely used open-source message broker written in the Erlang progr
 
 This article explains how to install RabbitMQ on a Vultr Ubuntu 16.04 server instance.
 
-== Prerequisites
+## Prerequisites
 
 Before getting started, you need to:
 
@@ -18,7 +20,7 @@ Before getting started, you need to:
 * Log into the server as a non-root sudo user.
 
 
-==  Step 1: Update the system
+## Step 1: Update the system
 Use the following commands to update your Ubuntu 16.04 system to the latest stable status:
 
 ```
@@ -26,7 +28,7 @@ sudo apt-get update
 sudo apt-get upgrade
 ```
 
-==  Step 2: Install Erlang
+##  Step 2: Install Erlang
 Since RabbitMQ is written in Erlang, you need to install Erlang before you can use RabbitMQ:
 
 ```
@@ -49,7 +51,7 @@ Eshell V9.1  (abort with ^G)
 Press Ctrl+C twice to quit the Erlang shell.
 ```
 
-==  Step 3: Install RabbitMQ
+##  Step 3: Install RabbitMQ
 
 Add the Apt repository to your Apt source list directory (/etc/apt/sources.list.d):
 
@@ -77,7 +79,7 @@ sudo apt-get install rabbitmq-server
 ```
 
 
-== Step 4: Start the Server
+## Step 4: Start the Server
 
 ```
 sudo systemctl start rabbitmq-server.service
@@ -98,7 +100,7 @@ sudo rabbitmqctl set_user_tags admin administrator
 sudo rabbitmqctl set_permissions -p / admin ".*" ".*" ".*"
 ```
 
-== Step 5: Enable and use the RabbitMQ management console
+## Step 5: Enable and use the RabbitMQ management console
 
 Enable the RabbitMQ management console so that you can monitor the RabbitMQ server processes from a web browser:
 
