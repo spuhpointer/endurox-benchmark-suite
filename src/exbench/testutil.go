@@ -136,13 +136,16 @@ type Ndrx_Bench_requestCB func(ctx *atmi.ATMICtx, correl int64, buf []byte) (int
 func Ndrx_bench_clmain(ctx *atmi.ATMICtx, threadid int, request Ndrx_Bench_requestCB) int {
 
 	nrrequestsPtr := flag.Int("num", 500000, "Number of requests")
+	retryPtr := flag.Int("retry", 1, "Number of retries")
 	flag.Parse()
 
 	size := 0
+	retriesDone := 1
 
 	nrrequests := *nrrequestsPtr
+	retries := *retryPtr
 
-	ctx.TpLogInfo("Number of request per message size: %d", nrrequests)
+	ctx.TpLogInfo("Number of request per message size: %d, retries: %d", nrrequests, retries)
 
 	/* Correlator shall be built as thread id + call number (we need some offset
 	 * for negative steps)
@@ -184,12 +187,21 @@ func Ndrx_bench_clmain(ctx *atmi.ATMICtx, threadid int, request Ndrx_Bench_reque
 			correl <<= 40
 
 			correl |= int64(req)
-
+		restart:
 			res, retbuf := request(ctx, correl, buf)
 
 			if res != SUCCEED {
 				ctx.TpLogError("Server failure on call=%d size=%d iter=%d correl=%d",
 					req, size, i, correl)
+
+				if retriesDone < retries {
+					retriesDone++
+					ctx.TpLogWarn("Got reply error ... restarting %d", retriesDone)
+					goto restart
+				}
+
+				return FAIL
+
 			}
 
 			if ret := Ndrx_bench_verify_buffer(ctx, retbuf, size, 254, "Error in reply"); ret != SUCCEED {
