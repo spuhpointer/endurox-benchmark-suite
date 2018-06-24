@@ -7,6 +7,8 @@
 export NDRX_BENCH_FILE=`pwd`/bench.txt
 export NDRX_BENCH_CONFIGNAME="RabbitMQ 3.7.5, lin 4.10, 64bit, i5-4300U"
 
+> $NDRX_BENCH_FILE
+
 pushd .
 
 export PATH=$PATH:`pwd`/runtime/bin

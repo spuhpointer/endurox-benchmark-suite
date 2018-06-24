@@ -6,6 +6,7 @@ all:
 	$(MAKE) -C exsrv
 	$(MAKE) -C exclt
 	$(MAKE) -C rbtmqsrv
+	$(MAKE) -C rbtmqsrvoneway
 	$(MAKE) -C rbtmqclt
 
 clean:
@@ -13,6 +14,7 @@ clean:
 	$(MAKE) -C exsrv clean
 	$(MAKE) -C exclt clean
 	$(MAKE) -C rbtmqsrv clean
+	$(MAKE) -C rbtmqsrvoneway clean
 	$(MAKE) -C rbtmqclt clean
 
 .PHONY: clean

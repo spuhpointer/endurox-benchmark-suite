@@ -82,34 +82,54 @@ func runbench() int {
 		}
 	*/
 
-	ret := b.Ndrx_bench_clmain(M_ctx, 1, func(ctx *atmi.ATMICtx, correl int64, buf []byte) (int, []byte) {
+	ret := b.Ndrx_bench_clmain(M_ctx, 1, func(ctx *atmi.ATMICtx, correl int64,
+		buf []byte, oneway bool) (int, []byte) {
 		corrId := strconv.FormatInt(correl, 10)
 
-		err = ch.Publish(
-			"",          // exchange
-			"rpc_queue", // routing key
-			false,       // mandatory
-			false,       // immediate
-			amqp.Publishing{
-				ContentType:   "text/plain",
-				CorrelationId: corrId,
-				ReplyTo:       q.Name,
-				Body:          buf,
-			})
+		if oneway {
 
-		failOnError(err, "Failed to publish a message")
+			err = ch.Publish(
+				"",             // exchange
+				"rpc_queue_1w", // routing key
+				false,          // mandatory
+				false,          // immediate
+				amqp.Publishing{
+					ContentType:   "text/plain",
+					CorrelationId: corrId,
+					ReplyTo:       q.Name,
+					Body:          buf,
+				})
 
-		for d := range msgs {
-			if corrId == d.CorrelationId {
-				//res, err = strconv.Atoi(string(d.Body))
-				//failOnError(err, "Failed to convert body to integer")
-				return atmi.SUCCEED, d.Body
-				break
+			failOnError(err, "Failed to publish a message")
+
+			return atmi.SUCCEED, nil
+		} else {
+			err = ch.Publish(
+				"",          // exchange
+				"rpc_queue", // routing key
+				false,       // mandatory
+				false,       // immediate
+				amqp.Publishing{
+					ContentType:   "text/plain",
+					CorrelationId: corrId,
+					ReplyTo:       q.Name,
+					Body:          buf,
+				})
+
+			failOnError(err, "Failed to publish a message")
+
+			for d := range msgs {
+				if corrId == d.CorrelationId {
+					//res, err = strconv.Atoi(string(d.Body))
+					//failOnError(err, "Failed to convert body to integer")
+					return atmi.SUCCEED, d.Body
+					break
+				}
 			}
-		}
 
-		ctx.TpLogError("Failed to get response!")
-		return atmi.FAIL, nil
+			ctx.TpLogError("Failed to get response!")
+			return atmi.FAIL, nil
+		}
 	})
 
 	return ret

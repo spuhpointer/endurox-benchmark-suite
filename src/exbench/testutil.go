@@ -106,7 +106,8 @@ func Ndrx_bench_svmain(ctx *atmi.ATMICtx, correl int64, buf []byte) (int, []byte
 
 	/* we got buffer, lets very it... */
 
-	if ret := Ndrx_bench_verify_buffer(ctx, buf, len(buf), 255, "TESTERROR! Invalid data from client!"); ret != SUCCEED {
+	if ret := Ndrx_bench_verify_buffer(ctx, buf, len(buf), 255,
+		"TESTERROR! Invalid data from client!"); ret != SUCCEED {
 		ctx.TpLogError("TESTERROR! Invalid data from client, received by server")
 		return FAIL, nil
 	}
@@ -117,6 +118,58 @@ func Ndrx_bench_svmain(ctx *atmi.ATMICtx, correl int64, buf []byte) (int, []byte
 	return SUCCEED, retbuf
 }
 
+/** Buffer len (last tested) */
+var M_bufLen int = 1
+
+/** Number of calls received */
+var M_nrcalls int = 0
+
+/** Stopwatch for server tests */
+var M_w StopWatch
+
+/**
+ * One way server function (measure that calls).
+ * Note that measurements will include the the time for receival of the next buffer
+ * size. Due to larg quantity of the messages, it is expected that it will not cause
+ * significant differentces in  the results.
+ * @param ctx ATMI Context for logging
+ * @param correl call correlator (optional)
+ * @param buf Buffer received to verify
+ * @return 0 succeed, -1 fail
+ */
+func Ndrx_bench_svmain_oneway(ctx *atmi.ATMICtx, correl int64, buf []byte) int {
+
+	/* verify incoming buffer */
+
+	rcv_len := len(buf)
+
+	if ret := Ndrx_bench_verify_buffer(ctx, buf, rcv_len, 255,
+		"TESTERROR! Invalid data from client!"); ret != SUCCEED {
+		ctx.TpLogError("TESTERROR! Invalid data from client, received by server")
+		return FAIL
+	}
+
+	M_nrcalls++
+
+	/* start the measurements if buflen is other than 1 */
+	if M_bufLen != rcv_len {
+
+		if M_bufLen != 1 {
+			/* we got next call, lets plot results */
+			if ret := Ndrx_bench_write_stats(float64(M_bufLen),
+				float64(M_nrcalls)/float64(M_w.GetDetlaSec())); SUCCEED != ret {
+				ctx.TpLogError("Failed to write benchmark stats!")
+				return FAIL
+			}
+		}
+		M_w.Reset()
+		M_bufLen = rcv_len
+		M_nrcalls = 1
+	}
+
+	return SUCCEED
+}
+
 /**
  * request callback function
  * @param ctx[in] ATMI context (for logging, etc...)
@@ -124,7 +177,7 @@ func Ndrx_bench_svmain(ctx *atmi.ATMICtx, correl int64, buf []byte) (int, []byte
  * @param correl[in] Call correlator (used by systems where needed to match req with rsp)
  * @return status code 0 = succeed, -1 = FAIL, return buffer.
  */
-type Ndrx_Bench_requestCB func(ctx *atmi.ATMICtx, correl int64, buf []byte) (int, []byte)
+type Ndrx_Bench_requestCB func(ctx *atmi.ATMICtx, correl int64, buf []byte, oneway bool) (int, []byte)
 
 /**
  * Benchmark main
@@ -137,6 +190,8 @@ func Ndrx_bench_clmain(ctx *atmi.ATMICtx, threadid int, request Ndrx_Bench_reque
 
 	nrrequestsPtr := flag.Int("num", 500000, "Number of requests")
 	retryPtr := flag.Int("retry", 1, "Number of retries")
+	onewayPtr := flag.Bool("oneway", false, "a bool")
+
 	flag.Parse()
 
 	size := 0
@@ -144,8 +199,10 @@ func Ndrx_bench_clmain(ctx *atmi.ATMICtx, threadid int, request Ndrx_Bench_reque
 
 	nrrequests := *nrrequestsPtr
 	retries := *retryPtr
+	oneway := *onewayPtr
 
-	ctx.TpLogInfo("Number of request per message size: %d, retries: %d", nrrequests, retries)
+	ctx.TpLogInfo("Number of request per message size: %d, retries: %d, oneway: %t",
+		nrrequests, retries, oneway)
 
 	/* Correlator shall be built as thread id + call number (we need some offset
 	 * for negative steps)
@@ -188,7 +245,7 @@ func Ndrx_bench_clmain(ctx *atmi.ATMICtx, threadid int, request Ndrx_Bench_reque
 
 			correl |= int64(req)
 		restart:
-			res, retbuf := request(ctx, correl, buf)
+			res, retbuf := request(ctx, correl, buf, oneway)
 
 			if res != SUCCEED {
 				ctx.TpLogError("Server failure on call=%d size=%d iter=%d correl=%d",
@@ -204,17 +261,22 @@ func Ndrx_bench_clmain(ctx *atmi.ATMICtx, threadid int, request Ndrx_Bench_reque
 
 			}
 
-			if ret := Ndrx_bench_verify_buffer(ctx, retbuf, size, 254, "Error in reply"); ret != SUCCEED {
+			/* verify only if it is RPC.. */
+			if !oneway {
+				if ret := Ndrx_bench_verify_buffer(ctx, retbuf, size, 254, "Error in reply"); ret != SUCCEED {
 
-				ctx.TpLogError("Failed to verify reply buffer on call=%d size=%d iter=%d correl=%d",
-					req, size, i, correl)
-				return FAIL
+					ctx.TpLogError("Failed to verify reply buffer on call=%d size=%d iter=%d correl=%d",
+						req, size, i, correl)
+					return FAIL
+				}
 			}
 		}
 
 		/* ready to plot the results... */
-		if i >= 0 {
-			if ret := Ndrx_bench_write_stats(float64(size), float64(requests_to_do)/float64(w.GetDetlaSec())); SUCCEED != ret {
+
+		if i >= 0 && !oneway {
+			if ret := Ndrx_bench_write_stats(float64(size),
+				float64(requests_to_do)/float64(w.GetDetlaSec())); SUCCEED != ret {
 				ctx.TpLogError("Failed to write benchmark stats!")
 				return FAIL
 			}

@@ -7,6 +7,10 @@
 export NDRX_BENCH_FILE=`pwd`/bench.txt
 export NDRX_BENCH_CONFIGNAME="Enduro/X 5.4 beta, on Linux 4.10, i5-4300U, Golang"
 
+# clean up bech file..
+> $NDRX_BENCH_FILE
+
+
 pushd .
 
 rm runtime/log/* 2>/dev/null

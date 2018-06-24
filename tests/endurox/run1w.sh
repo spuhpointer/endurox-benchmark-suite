@@ -1,21 +1,20 @@
 #!/bin/bash
 
 #
-# @(#) Enduro/X Benchmark
+# @(#) Enduro/X Benchmark, oneway test
 #
 
-export NDRX_BENCH_FILE=`pwd`/bench.txt
+export NDRX_BENCH_FILE=`pwd`/bench1w.txt
 export NDRX_BENCH_CONFIGNAME="Enduro/X 5.4 beta, on Linux 4.10, i5-4300U, Golang"
 # clean up bech file..
 > $NDRX_BENCH_FILE
-
 
 pushd .
 
 rm runtime/log/* 2>/dev/null
 cd runtime
 
-CALLS=40000
+CALLS=400000
 
 #
 # Generic exit function
@@ -42,13 +41,22 @@ cd ..
 # Start the system
 xadmin start -y
 
-exclt -num $CALLS
+exclt -num $CALLS -oneway
 RET=$?
 
 if [[ $RET != 0 ]]; then
-	echo "exclt -num $CALLS failed"
+	echo "exclt -num -oneway $CALLS failed"
 	go_out 1
 fi
+
+RESULT=""
+
+while [ "X$RESULT" == "X" ]; do
+        sleep 10
+        echo "Checking for completion..."
+        RESULT=`grep ' 4032 ' $NDRX_BENCH_FILE`
+done
+
 
 go_out 0
 

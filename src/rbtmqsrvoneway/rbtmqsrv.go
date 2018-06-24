@@ -30,6 +30,8 @@ func main() {
 		os.Exit(atmi.FAIL)
 	}
 
+	M_ctx.TpLogInfo("rbtmqsrvoneway booting...")
+
 	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
 	failOnError(err, "Failed to connect to RabbitMQ")
 	defer conn.Close()
@@ -39,12 +41,12 @@ func main() {
 	defer ch.Close()
 
 	q, err := ch.QueueDeclare(
-		"rpc_queue", // name
-		false,       // durable
-		false,       // delete when usused
-		false,       // exclusive
-		false,       // no-wait
-		nil,         // arguments
+		"rpc_queue_1w", // name
+		false,          // durable
+		false,          // delete when usused
+		false,          // exclusive
+		false,          // no-wait
+		nil,            // arguments
 	)
 	failOnError(err, "Failed to declare a queue")
 
@@ -70,26 +72,13 @@ func main() {
 		for d := range msgs {
 
 			//Run off the bencharmk suite
-			ret, ret_bytes := b.Ndrx_bench_svmain(M_ctx, 0, d.Body)
+			ret := b.Ndrx_bench_svmain_oneway(M_ctx, 0, d.Body)
 
 			if ret != atmi.SUCCEED {
 				M_ctx.TpLogError("Failed to process incoming message!")
 				os.Exit(atmi.FAIL)
 			}
 
-			err = ch.Publish(
-				"",        // exchange
-				d.ReplyTo, // routing key
-				false,     // mandatory
-				false,     // immediate
-				amqp.Publishing{
-					ContentType:   "application/octet-stream",
-					CorrelationId: d.CorrelationId,
-					Body:          ret_bytes,
-				})
-			failOnError(err, "Failed to publish a message")
-
-			// Auto ack will be ok, because we return RPC reply, thus ack
 			//d.Ack(false)
 		}
 	}()
