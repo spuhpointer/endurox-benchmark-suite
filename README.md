@@ -14,3 +14,11 @@ Currently following platforms are tested:
 
 ## Operating Systems
 Tests are performed on Unix like systems (primary on Linux).
+
+## Current test cases
+Currently RPC test cases are provided
+
+## New developments
+Next testing could be one direction throughput testing
+The server process shall verify the data buffer and onece the buffer size
+is changed from previous call, then we shall plot the results
