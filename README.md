@@ -22,3 +22,7 @@ Currently RPC test cases are provided
 Next testing could be one direction throughput testing
 The server process shall verify the data buffer and onece the buffer size
 is changed from previous call, then we shall plot the results
+
+## New platforms
+
+* https://devops.profitbricks.com/tutorials/install-and-configure-apache-kafka-on-ubuntu-1604-1/
