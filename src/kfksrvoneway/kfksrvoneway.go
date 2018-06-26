@@ -50,7 +50,7 @@ func main() {
 
 		if err == nil {
 
-			M_ctx.TpLogInfo("got msg: %s", string(msg.Value))
+			//M_ctx.TpLogInfo("got msg: %s", string(msg.Value))
 			ret := b.Ndrx_bench_svmain_oneway(M_ctx, 0, msg.Value)
 
 			if ret != atmi.SUCCEED {

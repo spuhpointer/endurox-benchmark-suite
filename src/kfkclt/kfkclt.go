@@ -41,6 +41,11 @@ func request(ctx *atmi.ATMICtx, correl int64, buf []byte, oneway bool) (int, []b
 	if oneway {
 
 		//ctx.TpLogInfo("About to produce...")
+		// Update to async producer: https://github.com/tcnksm-sample/sarama/blob/master/async-producer/main.go
+		// we could do this also with server! to avoid any full queue...
+		// the same must go to server side too...!
+
+	restart:
 
 		if err := M_producer.Produce(&kafka.Message{
 			TopicPartition: kafka.TopicPartition{Topic: &M_request_topic, Partition: kafka.PartitionAny},
@@ -48,8 +53,64 @@ func request(ctx *atmi.ATMICtx, correl int64, buf []byte, oneway bool) (int, []b
 			Key:            []byte(corrId),
 		}, nil); nil != err {
 			ctx.TpLogError("Failed to produce message: %s", err.Error())
-			return atmi.FAIL, nil
+			//Read events if any...
+			for e := range M_producer.Events() {
+				switch ev := e.(type) {
+				case *kafka.Message:
+					m := ev
+					if m.TopicPartition.Error != nil {
+						fmt.Printf("Delivery failed: %v\n", m.TopicPartition.Error)
+					} else {
+						//
+						//	fmt.Printf("Delivered message to topic %s [%d] at offset %v\n",
+						//		*m.TopicPartition.Topic, m.TopicPartition.Partition, m.TopicPartition.Offset)
+
+					}
+
+					goto restart
+
+				default:
+					fmt.Printf("Ignored event: %s\n", ev)
+				}
+			}
+
+			goto restart
+			//return atmi.FAIL, nil
 		}
+
+		/*
+			doneChan := make(chan bool)
+
+			go func() {
+				defer close(doneChan)
+				for e := range M_producer.Events() {
+					switch ev := e.(type) {
+					case *kafka.Message:
+						m := ev
+						if m.TopicPartition.Error != nil {
+							fmt.Printf("Delivery failed: %v\n", m.TopicPartition.Error)
+						} else {
+							//
+							//	fmt.Printf("Delivered message to topic %s [%d] at offset %v\n",
+							//		*m.TopicPartition.Topic, m.TopicPartition.Partition, m.TopicPartition.Offset)
+
+						}
+						return
+
+					default:
+						fmt.Printf("Ignored event: %s\n", ev)
+					}
+				}
+			}()
+
+			M_producer.ProduceChannel() <- &kafka.Message{
+				TopicPartition: kafka.TopicPartition{Topic: &M_request_topic, Partition: kafka.PartitionAny},
+				Value:          buf,
+				Key:            []byte(corrId),
+			}
+
+			_ = <-doneChan
+		*/
 
 		/* we are ok, buffer receive, lets return it... */
 		return atmi.SUCCEED, nil
