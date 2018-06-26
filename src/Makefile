@@ -8,6 +8,8 @@ all:
 	$(MAKE) -C rbtmqsrv
 	$(MAKE) -C rbtmqsrvoneway
 	$(MAKE) -C rbtmqclt
+	$(MAKE) -C kfkclt
+	$(MAKE) -C kfksrv
 
 clean:
 	$(MAKE) -C exbench clean
@@ -16,5 +18,7 @@ clean:
 	$(MAKE) -C rbtmqsrv clean
 	$(MAKE) -C rbtmqsrvoneway clean
 	$(MAKE) -C rbtmqclt clean
+	$(MAKE) -C kfkclt clean
+	$(MAKE) -C kfksrv clean
 
 .PHONY: clean
