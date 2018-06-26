@@ -11,7 +11,6 @@ Currently following platforms are tested:
 
 * RabbitMQ
 
-
 ## Operating Systems
 Tests are performed on Unix like systems (primary on Linux).
 
@@ -26,3 +25,5 @@ is changed from previous call, then we shall plot the results
 ## New platforms
 
 * https://devops.profitbricks.com/tutorials/install-and-configure-apache-kafka-on-ubuntu-1604-1/
+
+* https://www.virtual-server.org/blog/how-to-install-activemq-on-ubuntu-16-04/
