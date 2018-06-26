@@ -40,6 +40,8 @@ func request(ctx *atmi.ATMICtx, correl int64, buf []byte, oneway bool) (int, []b
 
 	if oneway {
 
+		//ctx.TpLogInfo("About to produce...")
+
 		if err := M_producer.Produce(&kafka.Message{
 			TopicPartition: kafka.TopicPartition{Topic: &M_request_topic, Partition: kafka.PartitionAny},
 			Value:          buf,

@@ -1,11 +1,11 @@
 #!/bin/bash
 
 #
-# @(#) Rabbitmq Benchmark
+# @(#) Kafka Benchmark
 #
 
 export NDRX_BENCH_FILE=`pwd`/bench1w.txt
-export NDRX_BENCH_CONFIGNAME="RabbitMQ 3.7.5, lin 4.10, 64bit, i5-4300U"
+export NDRX_BENCH_CONFIGNAME="kafka_2.10-0.10.0.1, lin 4.10, 64bit, i5-4300U"
 
 # clean up bech file..
 > $NDRX_BENCH_FILE
@@ -27,7 +27,7 @@ CALLS=400000
 #
 function go_out {
     echo "Test exiting with: $1"
-    xadmin killall rbtmqclt rbtmqsrv
+    xadmin killall kfkclt kfksrv
 
     popd 2>/dev/null
     exit $1
@@ -35,22 +35,22 @@ function go_out {
 
 
 echo "Starting server process..."
-rbtmqsrvoneway &
+kfksrvoneway &
 
 SV_PID=$!
 
-sleep 1
+sleep 10
 
 if ! kill -0 $SV_PID > /dev/null 2>&1; then
-        echo "RabbitMQ server not started! Is RabbitMQ booted?" >&2
+        echo "Kafka server not started! Is Kafka booted?" >&2
         go_out 1 
 fi
 
-rbtmqclt -num $CALLS -oneway
+kfkclt -num $CALLS -oneway
 RET=$?
 
 if [[ $RET != 0 ]]; then
-	echo "rbtmqclt -num $CALLS -oneway failed"
+	echo "kfkclt -num $CALLS -oneway failed"
 	go_out 2
 fi
 

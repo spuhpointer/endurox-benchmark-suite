@@ -12,10 +12,8 @@ import (
 var M_ctx *atmi.ATMICtx
 
 var M_consumer *kafka.Consumer
-var M_producer *kafka.Producer
 
 var M_request_topic = "srvreq"
-var M_reply_topic = "cltrply"
 
 func main() {
 
@@ -41,42 +39,22 @@ func main() {
 		panic(err)
 	}
 
-	M_consumer.SubscribeTopics([]string{M_reply_topic}, nil)
+	M_consumer.SubscribeTopics([]string{M_request_topic}, nil)
 
 	defer M_consumer.Close()
 
-	//////////////////////////////////////////////////////////////////////////////
-	// Create producer
-	//////////////////////////////////////////////////////////////////////////////
-	M_producer, err = kafka.NewProducer(&kafka.ConfigMap{"bootstrap.servers": "localhost"})
-	if err != nil {
-		panic(err)
-	}
-
-	defer M_producer.Close()
-
 	/* wait for correlated message... */
 	for {
+		//M_ctx.TpLogInfo("Waiting for msgs...")
 		msg, err := M_consumer.ReadMessage(-1)
+
 		if err == nil {
 
-			/*
-				M_ctx.TpLogInfo("Message on %s: %s=%s\n", msg.TopicPartition,
-					string(msg.Key), string(msg.Value))
-			*/
-			ret, ret_bytes := b.Ndrx_bench_svmain(M_ctx, 0, msg.Value)
+			M_ctx.TpLogInfo("got msg: %s", string(msg.Value))
+			ret := b.Ndrx_bench_svmain_oneway(M_ctx, 0, msg.Value)
 
 			if ret != atmi.SUCCEED {
 				M_ctx.TpLogError("Failed to process incoming message!")
-				os.Exit(atmi.FAIL)
-			}
-
-			if err := M_producer.Produce(&kafka.Message{
-				TopicPartition: kafka.TopicPartition{Topic: &M_reply_topic, Partition: kafka.PartitionAny},
-				Value:          ret_bytes,
-				Key:            msg.Key,
-			}, nil); nil != err {
-				M_ctx.TpLogError("Failed to produce message: %s", err.Error())
 				os.Exit(atmi.FAIL)
 			}
 
