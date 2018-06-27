@@ -11,8 +11,6 @@ import (
 
 var M_ctx *atmi.ATMICtx
 
-var M_quit = make(chan struct{})
-
 func failOnError(err error, msg string) {
 	if err != nil {
 		M_ctx.TpLogError("%s: %s", msg, err)
@@ -22,8 +20,9 @@ func failOnError(err error, msg string) {
 
 func main() {
 
+	var errA atmi.ATMIError
 	//Have some context
-	M_ctx, errA := atmi.NewATMICtx()
+	M_ctx, errA = atmi.NewATMICtx()
 
 	if nil != errA {
 		fmt.Fprintf(os.Stderr, "Failed to allocate new context: %s", errA)
@@ -40,8 +39,11 @@ func main() {
 
 	failOnError(err, "Failed to connect to subscribe to reply queue")
 
+	M_ctx.TpLogInfo("About waiting for messages...")
 	for {
 		msg := <-sub.C
+
+		//M_ctx.TpLogInfo("Got corr [%s] %s", msg.Header.Get("corrid"), string(msg.Body))
 
 		ret, ret_bytes := b.Ndrx_bench_svmain(M_ctx, 0, msg.Body)
 
@@ -50,10 +52,12 @@ func main() {
 			os.Exit(atmi.FAIL)
 		}
 
+		//M_ctx.TpLogInfo("Sending corr [%s] %s", msg.Header.Get("corrid"), string(ret_bytes))
+
 		err := conn.Send(
-			"/queue/cltreply", // destination
-			"text/plain",      // content-type
-			ret_bytes,         // body
+			"/queue/cltrply",           // destination
+			"application/octet-stream", // content-type
+			ret_bytes,                  // body
 			stomp.SendOpt.Header("corrid", msg.Header.Get("corrid")))
 
 		failOnError(err, "Failed to publish a message")

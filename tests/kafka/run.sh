@@ -38,7 +38,7 @@ kfksrv &
 
 SV_PID=$!
 
-sleep 10
+sleep 5
 
 if ! kill -0 $SV_PID > /dev/null 2>&1; then
         echo "Kafka server not started! Is Kafka booted?" >&2

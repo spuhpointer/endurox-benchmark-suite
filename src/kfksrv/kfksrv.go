@@ -14,8 +14,8 @@ var M_ctx *atmi.ATMICtx
 var M_consumer *kafka.Consumer
 var M_producer *kafka.Producer
 
-var M_request_topic = "srvreq"
-var M_reply_topic = "cltrply"
+var M_request_topic = "cltrply"
+var M_reply_topic = "srvreq"
 
 func main() {
 
@@ -60,10 +60,8 @@ func main() {
 		msg, err := M_consumer.ReadMessage(-1)
 		if err == nil {
 
-			/*
-				M_ctx.TpLogInfo("Message on %s: %s=%s\n", msg.TopicPartition,
-					string(msg.Key), string(msg.Value))
-			*/
+			//M_ctx.TpLogInfo("Message on %s: %s=%s\n", msg.TopicPartition,
+			//	string(msg.Key), string(msg.Value))
 			ret, ret_bytes := b.Ndrx_bench_svmain(M_ctx, 0, msg.Value)
 
 			if ret != atmi.SUCCEED {
@@ -72,7 +70,7 @@ func main() {
 			}
 
 			if err := M_producer.Produce(&kafka.Message{
-				TopicPartition: kafka.TopicPartition{Topic: &M_reply_topic, Partition: kafka.PartitionAny},
+				TopicPartition: kafka.TopicPartition{Topic: &M_request_topic, Partition: kafka.PartitionAny},
 				Value:          ret_bytes,
 				Key:            msg.Key,
 			}, nil); nil != err {

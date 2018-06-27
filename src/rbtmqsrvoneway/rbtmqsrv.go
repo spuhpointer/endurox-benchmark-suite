@@ -22,8 +22,9 @@ func failOnError(err error, msg string) {
 
 func main() {
 
+        var errA atmi.ATMIError
 	//Have some context
-	M_ctx, errA := atmi.NewATMICtx()
+	M_ctx, errA = atmi.NewATMICtx()
 
 	if nil != errA {
 		fmt.Fprintf(os.Stderr, "Failed to allocate new context: %s", errA)

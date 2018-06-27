@@ -6,7 +6,7 @@ import (
 	"os"
 
 	atmi "github.com/endurox-dev/endurox-go"
-	"github.com/streadway/amqp"
+	stomp "github.com/go-stomp/stomp"
 )
 
 var M_ctx *atmi.ATMICtx
@@ -22,66 +22,42 @@ func failOnError(err error, msg string) {
 
 func main() {
 
+	var errA atmi.ATMIError
+
 	//Have some context
-	M_ctx, errA := atmi.NewATMICtx()
+	M_ctx, errA = atmi.NewATMICtx()
 
 	if nil != errA {
 		fmt.Fprintf(os.Stderr, "Failed to allocate new context: %s", errA)
 		os.Exit(atmi.FAIL)
 	}
 
-	M_ctx.TpLogInfo("rbtmqsrvoneway booting...")
+	if nil != errA {
+		fmt.Fprintf(os.Stderr, "Failed to allocate new context: %s", errA)
+		os.Exit(atmi.FAIL)
+	}
 
-	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
-	failOnError(err, "Failed to connect to RabbitMQ")
-	defer conn.Close()
+	conn, err := stomp.Dial("tcp", "localhost:61613")
 
-	ch, err := conn.Channel()
-	failOnError(err, "Failed to open a channel")
-	defer ch.Close()
+	defer conn.Disconnect()
 
-	q, err := ch.QueueDeclare(
-		"rpc_queue_1w", // name
-		false,          // durable
-		false,          // delete when usused
-		false,          // exclusive
-		false,          // no-wait
-		nil,            // arguments
-	)
-	failOnError(err, "Failed to declare a queue")
+	failOnError(err, "Failed to connect to ActiveMQ")
 
-	err = ch.Qos(
-		1,     // prefetch count
-		0,     // prefetch size
-		false, // global
-	)
-	failOnError(err, "Failed to set QoS")
+	sub, err := conn.Subscribe("/queue/srvreq", stomp.AckAuto)
 
-	msgs, err := ch.Consume(
-		q.Name, // queue
-		"",     // consumer
-		true,   // auto-ack
-		false,  // exclusive
-		false,  // no-local
-		false,  // no-wait
-		nil,    // args
-	)
-	failOnError(err, "Failed to register a consumer")
+	failOnError(err, "Failed to connect to subscribe to reply queue")
 
-	go func() {
-		for d := range msgs {
+	M_ctx.TpLogInfo("About waiting for messages...")
+	for {
+		msg := <-sub.C
 
-			//Run off the bencharmk suite
-			ret := b.Ndrx_bench_svmain_oneway(M_ctx, 0, d.Body)
+		//Run off the bencharmk suite
+		ret := b.Ndrx_bench_svmain_oneway(M_ctx, 0, msg.Body)
 
-			if ret != atmi.SUCCEED {
-				M_ctx.TpLogError("Failed to process incoming message!")
-				os.Exit(atmi.FAIL)
-			}
-
-			//d.Ack(false)
+		if ret != atmi.SUCCEED {
+			M_ctx.TpLogError("Failed to process incoming message!")
+			os.Exit(atmi.FAIL)
 		}
-	}()
 
-	<-M_quit
+	}
 }

@@ -38,6 +38,9 @@ par(mar=c(5.1, 4.1, 4.1, 22.1), xpd=TRUE)
 plot(xrange, yrange, log="y", type="n", xlab=XLAB,
         ylab=YLAB ) 
 
+#plot(xrange, yrange, type="n", xlab=XLAB,
+#        ylab=YLAB ) 
+
 grid()
 
 colors <- rainbow(nConfigurations) 

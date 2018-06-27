@@ -130,10 +130,8 @@ func request(ctx *atmi.ATMICtx, correl int64, buf []byte, oneway bool) (int, []b
 		for {
 			msg, err := M_consumer.ReadMessage(-1)
 			if err == nil {
-				/*
-					ctx.TpLogInfo("Message on %s: %s=%s\n", msg.TopicPartition,
-						string(msg.Key), string(msg.Value))
-				*/
+				//ctx.TpLogInfo("Message on %s: %s=%s\n", msg.TopicPartition,
+				//	string(msg.Key), string(msg.Value))
 				if string(msg.Key) == corrId {
 
 					return atmi.SUCCEED, msg.Value
